@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -37,6 +38,11 @@ class _PermissionsPageState extends State<PermissionsPage> {
   bool _isRequestingNotification = false;
   String? _notificationError;
 
+  // --- Reminders (Persona 3) ---
+  PermissionStatus? _remindersStatus;
+  bool _isRequestingReminders = false;
+  String? _remindersError;
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +78,29 @@ class _PermissionsPageState extends State<PermissionsPage> {
     } finally {
       if (mounted) {
         setState(() => _isRequestingNotification = false);
+      }
+    }
+  }
+
+  Future<void> _requestRemindersPermission() async {
+    setState(() {
+      _isRequestingReminders = true;
+      _remindersError = null;
+    });
+
+    try {
+      final status = await Permission.reminders.request();
+      if (!mounted) return;
+      setState(() => _remindersStatus = status);
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _remindersError =
+            'No se pudo consultar el permiso de Reminders: ${error.message}';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isRequestingReminders = false);
       }
     }
   }
@@ -194,6 +223,49 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 const SizedBox(height: 16),
                 Text(
                   _notificationError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 24),
+              const Icon(Icons.event_note, size: 72),
+              const SizedBox(height: 16),
+              const Text(
+                'Reminders: permiso para acceder a los recordatorios del '
+                'dispositivo (iOS). Android no tiene un permiso nativo '
+                'equivalente ni muestra un diálogo. permission_handler puede '
+                'responder Concedido porque no hay permiso Android que '
+                'gestionar; esto no significa que la app tenga acceso a '
+                'recordatorios.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              _PermissionStatus(
+                label: 'Reminders',
+                status: defaultTargetPlatform == TargetPlatform.android
+                    ? _remindersStatus == null
+                          ? 'No disponible en Android'
+                          : 'No disponible (plugin: '
+                                '${_statusLabel(_remindersStatus)})'
+                    : _statusLabel(_remindersStatus),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _isRequestingReminders
+                    ? null
+                    : _requestRemindersPermission,
+                child: Text(
+                  _isRequestingReminders
+                      ? 'Solicitando...'
+                      : 'Solicitar permiso de Reminders',
+                ),
+              ),
+              if (_remindersError != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _remindersError!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                   textAlign: TextAlign.center,
                 ),
