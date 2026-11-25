@@ -3,35 +3,78 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
-  runApp(const BluetoothPermissionsApp());
+  runApp(const PermissionsApp());
 }
 
-class BluetoothPermissionsApp extends StatelessWidget {
-  const BluetoothPermissionsApp({super.key});
+class PermissionsApp extends StatelessWidget {
+  const PermissionsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Permisos Bluetooth',
+      title: 'Permisos Equipo 5',
       theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
-      home: const BluetoothPermissionsPage(),
+      home: const PermissionsPage(),
     );
   }
 }
 
-class BluetoothPermissionsPage extends StatefulWidget {
-  const BluetoothPermissionsPage({super.key});
+class PermissionsPage extends StatefulWidget {
+  const PermissionsPage({super.key});
 
   @override
-  State<BluetoothPermissionsPage> createState() =>
-      _BluetoothPermissionsPageState();
+  State<PermissionsPage> createState() => _PermissionsPageState();
 }
 
-class _BluetoothPermissionsPageState extends State<BluetoothPermissionsPage> {
+class _PermissionsPageState extends State<PermissionsPage> {
   PermissionStatus? _scanStatus;
   PermissionStatus? _connectStatus;
   bool _isRequesting = false;
   String? _errorMessage;
+
+  // --- Notificaciones (Persona 1) ---
+  PermissionStatus? _notificationStatus;
+  bool _isRequestingNotification = false;
+  String? _notificationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationStatus();
+  }
+
+  /// Lee el estado actual sin mostrar ningún diálogo.
+  Future<void> _loadNotificationStatus() async {
+    final status = await Permission.notification.status;
+    if (!mounted) return;
+    setState(() => _notificationStatus = status);
+  }
+
+  /// En Android 13+ (API 33) muestra el diálogo del sistema.
+  /// En Android 12 o inferior el permiso se concede automáticamente.
+  Future<void> _requestNotificationPermission() async {
+    setState(() {
+      _isRequestingNotification = true;
+      _notificationError = null;
+    });
+
+    try {
+      final status = await Permission.notification.request();
+      if (!mounted) return;
+      setState(() => _notificationStatus = status);
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _notificationError =
+            'No se pudo solicitar el permiso de notificaciones: '
+            '${error.message}';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isRequestingNotification = false);
+      }
+    }
+  }
 
   Future<void> _requestPermissions() async {
     setState(() {
@@ -75,7 +118,7 @@ class _BluetoothPermissionsPageState extends State<BluetoothPermissionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Permisos Bluetooth')),
+      appBar: AppBar(title: const Text('Permisos Equipo 5')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -86,7 +129,7 @@ class _BluetoothPermissionsPageState extends State<BluetoothPermissionsPage> {
               const Icon(Icons.bluetooth, size: 72),
               const SizedBox(height: 16),
               const Text(
-                'Esta aplicación solo solicita permisos Bluetooth. '
+                'Bluetooth: la app solo solicita los permisos Scan y Connect. '
                 'No busca, empareja ni conecta dispositivos.',
                 textAlign: TextAlign.center,
               ),
@@ -110,6 +153,47 @@ class _BluetoothPermissionsPageState extends State<BluetoothPermissionsPage> {
                 const SizedBox(height: 16),
                 Text(
                   _errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 24),
+              const Icon(Icons.notifications_active, size: 72),
+              const SizedBox(height: 16),
+              const Text(
+                'Notificaciones: la app solicita el permiso POST_NOTIFICATIONS '
+                '(Android 13 o superior). No envía ninguna notificación.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              _PermissionStatus(
+                label: 'Notificaciones',
+                status: _statusLabel(_notificationStatus),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _isRequestingNotification
+                    ? null
+                    : _requestNotificationPermission,
+                child: Text(
+                  _isRequestingNotification
+                      ? 'Solicitando...'
+                      : 'Solicitar permiso de notificaciones',
+                ),
+              ),
+              if (_notificationStatus?.isPermanentlyDenied ?? false) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: openAppSettings,
+                  child: const Text('Abrir ajustes de la app'),
+                ),
+              ],
+              if (_notificationError != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _notificationError!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                   textAlign: TextAlign.center,
                 ),

@@ -10,8 +10,11 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+    <!-- Notificaciones: obligatorio para pedir el permiso en Android 13+ (API 33) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
-        android:label="Permisos Bluetooth"
+        android:label="Permisos Equipo 5"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
